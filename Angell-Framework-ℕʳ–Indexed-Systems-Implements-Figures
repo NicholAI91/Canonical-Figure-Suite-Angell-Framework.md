@@ -1,0 +1,318 @@
+"""
+Canonical Figure Suite for the Angell Framework (ℕʳ–Indexed Systems)
+Implements Figures 1–7 consistent with the canonical LaTeX figure-suite section.
+
+Requirements:
+    pip install numpy matplotlib
+
+Output:
+    fig1_nr_stability_stack.png
+    fig2_beta_planes.png
+    fig3_nr_threshold_operator.png
+    fig4_julia_nr_nick_vortex.png
+    fig5_socratic_balance_potential.png
+    fig6_conceptual_placement_map.png
+    fig7_unified_transcendence_resonance.png
+"""
+
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib import cm
+
+phi = (1 + 5 ** 0.5) / 2  # golden ratio φ
+
+def logistic(x, k=10.0, x0=0.0):
+    return 1.0 / (1.0 + np.exp(-k * (x - x0)))
+
+
+# -----------------------------------------------
+# Figure 1: ℕʳ–Indexed Stability Boundary Stack
+# β(x, t; r) = α(r) x^2 / t, α(r) = α0 φ^r
+# -----------------------------------------------
+
+def fig1_nr_stability_stack(
+    x_range=(0.15, 3.0),
+    t_range=(0.6, 5.0),
+    r_values=(0, 1, 2, 3),
+    alpha0=0.35,
+    num_points=80,
+    filename="fig1_nr_stability_stack.png",
+):
+    x = np.linspace(*x_range, num_points)
+    t = np.linspace(*t_range, num_points)
+    X, T = np.meshgrid(x, t)
+
+    fig = plt.figure(figsize=(9, 7))
+    ax = fig.add_subplot(111, projection="3d")
+
+    for r in r_values:
+        alpha_r = alpha0 * (phi ** r)
+        B = alpha_r * (X ** 2) / T
+        ax.plot_surface(X, T, B, alpha=0.22, cmap=cm.viridis, edgecolor="none")
+
+    ax.set_xlabel("x")
+    ax.set_ylabel("t")
+    ax.set_zlabel(r"$\beta(x,t;r)$")
+    ax.set_title(r"Figure 1. $\mathbb{N}^r$–Indexed Stability Boundary Stack")
+    ax.view_init(elev=22, azim=40)
+    plt.tight_layout()
+    plt.savefig(filename, dpi=300)
+    plt.close(fig)
+
+
+# -------------------------------------------------
+# Figure 2: Discrete β(ℕʳ) Constraint Planes
+# β_r = β0 φ^{-r} intersecting a fixed stability surface
+# -------------------------------------------------
+
+def fig2_beta_planes(
+    x_range=(0.15, 3.0),
+    t_range=(0.6, 5.0),
+    r_values=(0, 1, 2, 3),
+    alpha_fixed=0.55,
+    beta0=0.9,
+    num_points=90,
+    filename="fig2_beta_planes.png",
+):
+    x = np.linspace(*x_range, num_points)
+    t = np.linspace(*t_range, num_points)
+    X, T = np.meshgrid(x, t)
+
+    B_surface = alpha_fixed * (X ** 2) / T
+
+    fig = plt.figure(figsize=(9, 7))
+    ax = fig.add_subplot(111, projection="3d")
+    ax.plot_surface(X, T, B_surface, alpha=0.35, cmap=cm.plasma, edgecolor="none")
+
+    for r in r_values:
+        beta_r = beta0 * (phi ** (-r))
+        Z = np.full_like(X, beta_r, dtype=float)
+        ax.plot_surface(X, T, Z, alpha=0.18, cmap=cm.gray, edgecolor="none")
+        ax.text(2.7, 0.8, beta_r, f"β(r={r})", fontsize=9)
+
+    ax.set_xlabel("x")
+    ax.set_ylabel("t")
+    ax.set_zlabel(r"$\beta$")
+    ax.set_title(r"Figure 2. Discrete $\beta(\mathbb{N}^r)$ Constraint Planes")
+    ax.view_init(elev=24, azim=38)
+    plt.tight_layout()
+    plt.savefig(filename, dpi=300)
+    plt.close(fig)
+
+
+# --------------------------------------------------------
+# Figure 3: ℕʳ Threshold Operator as Gated Activation
+# A_r(x) = H(x - τ_r), τ_r = τ0 φ^{-r}, plus logistic approximation
+# --------------------------------------------------------
+
+def fig3_nr_threshold_operator(
+    x_range=(-2.5, 2.5),
+    r_values=(0, 1, 2, 3),
+    tau0=0.8,
+    k=10.0,
+    num_points=1200,
+    filename="fig3_nr_threshold_operator.png",
+):
+    x = np.linspace(*x_range, num_points)
+
+    fig, ax = plt.subplots(figsize=(9, 6))
+    for r in r_values:
+        tau_r = tau0 * (phi ** (-r))
+        H = (x >= tau_r).astype(float)
+        sigma = logistic(x, k=k, x0=tau_r)
+        ax.plot(x, sigma, linewidth=2.0, label=f"Smooth gate, r={r}, τ={tau_r:.3f}")
+        ax.plot(x, H, linestyle="--", linewidth=1.2)
+
+    ax.set_xlabel("x")
+    ax.set_ylabel(r"$A_r(x)$")
+    ax.set_title(r"Figure 3. $\mathbb{N}^r$ Threshold Operator as Gated Activation")
+    ax.set_ylim(-0.05, 1.05)
+    ax.grid(True, alpha=0.25)
+    ax.legend(fontsize=9, loc="lower right")
+    plt.tight_layout()
+    plt.savefig(filename, dpi=300)
+    plt.close(fig)
+
+
+# ----------------------------------------------------------
+# Figure 4: ℕʳ–Stepped Julia Family ("Nick Vortex")
+# z_{n+1} = z_n^2 + c(r), with c(r) stepping discretely
+# ----------------------------------------------------------
+
+def julia_set(c, n_iter=200, bound=2.0, res=500, xlim=(-1.6, 1.6), ylim=(-1.6, 1.6)):
+    x = np.linspace(*xlim, res)
+    y = np.linspace(*ylim, res)
+    X, Y = np.meshgrid(x, y)
+    Z0 = X + 1j * Y
+
+    z = Z0.copy()
+    escape_time = np.full(Z0.shape, n_iter, dtype=int)
+    mask = np.ones(Z0.shape, dtype=bool)
+
+    for n in range(n_iter):
+        z[mask] = z[mask] ** 2 + c
+        escaped = np.abs(z) > bound
+        newly = escaped & mask
+        escape_time[newly] = n
+        mask &= ~escaped
+        if not mask.any():
+            break
+
+    return X, Y, escape_time
+
+
+def fig4_julia_nr_nick_vortex(
+    r_values=(0, 1, 2, 3),
+    base_c=-0.72 + 0.23j,
+    step=0.015 + 0.02j,
+    filename="fig4_julia_nr_nick_vortex.png",
+):
+    fig, axes = plt.subplots(2, 2, figsize=(10, 10))
+    axes = axes.flatten()
+
+    for idx, r in enumerate(r_values):
+        c_r = base_c + r * step
+        X, Y, E = julia_set(c_r, n_iter=220, bound=2.0, res=500)
+        ax = axes[idx]
+        ax.imshow(E, extent=(X.min(), X.max(), Y.min(), Y.max()),
+                  origin="lower", cmap="magma")
+        ax.set_title(f"r={r},  c={c_r.real:.3f}{c_r.imag:+.3f}i")
+        ax.set_xticks([])
+        ax.set_yticks([])
+
+    fig.suptitle(r"Figure 4. $\mathbb{N}^r$–Stepped Julia Family (Nick Vortex)", y=0.98)
+    plt.tight_layout()
+    plt.savefig(filename, dpi=300)
+    plt.close(fig)
+
+
+# ---------------------------------------------------------
+# Figure 5: Law of Socratic Balance as ℕʳ–Indexed Potential
+# V_r(Δ) = k(r) Δ^2, k(r) = k0 φ^r
+# ---------------------------------------------------------
+
+def fig5_socratic_balance_potential(
+    delta_range=(-3.0, 3.0),
+    r_values=(0, 1, 2, 3),
+    k0=0.25,
+    num_points=800,
+    filename="fig5_socratic_balance_potential.png",
+):
+    delta = np.linspace(*delta_range, num_points)
+    fig, ax = plt.subplots(figsize=(9, 6))
+
+    for r in r_values:
+        k_r = k0 * (phi ** r)
+        V = k_r * delta ** 2
+        ax.plot(delta, V, linewidth=2.2, label=f"r={r}, k(r)={k_r:.3f}")
+
+    ax.axvspan(-3, -1.5, alpha=0.12)
+    ax.axvspan(1.5, 3, alpha=0.12)
+    ax.annotate("Equilibrium", xy=(0, 0), xytext=(0.35, 0.6),
+                arrowprops=dict(arrowstyle="->", lw=1.5))
+
+    ax.set_xlabel(r"$\Delta$")
+    ax.set_ylabel(r"$V_r(\Delta)$")
+    ax.set_title(r"Figure 5. Law of Socratic Balance ($\mathbb{N}^r$–Indexed Quadratic Potential)")
+    ax.set_ylim(0, 8)
+    ax.grid(True, alpha=0.25)
+    ax.legend(fontsize=9, loc="upper center", ncol=2)
+    plt.tight_layout()
+    plt.savefig(filename, dpi=300)
+    plt.close(fig)
+
+
+# ---------------------------------------------------
+# Figure 6: Conceptual Placement Map
+# geometry ↔ information, discrete ↔ continuous
+# ---------------------------------------------------
+
+def fig6_conceptual_placement_map(filename="fig6_conceptual_placement_map.png"):
+    fig, ax = plt.subplots(figsize=(9, 7))
+
+    ax.set_xlim(0, 10)
+    ax.set_ylim(0, 10)
+    ax.set_xlabel("Geometry  ⟶  Information")
+    ax.set_ylabel("Discrete  ⟶  Continuous")
+    ax.set_title("Figure 6. Conceptual Placement Map (Geometry ↔ Information; Discrete ↔ Continuous)")
+    ax.grid(True, alpha=0.2)
+
+    points = [
+        (r"$\mathbb{N}$", 2.0, 2.0),
+        (r"$\mathbb{N}^r$", 4.3, 5.0),
+        ("Mandelbrot boundary", 2.6, 4.5),
+        ("Julia 'Nick' vortices", 2.9, 3.5),
+        ("Stability manifolds", 3.4, 8.0),
+        ("Socratic Mandate shell", 7.8, 6.0),
+        ("r = ln(φ) normalization", 6.7, 6.8),
+    ]
+
+    ax.scatter([p[1] for p in points], [p[2] for p in points], s=60, color="tab:blue")
+    for label, x, y in points:
+        ax.text(x + 0.12, y + 0.12, label, fontsize=9)
+
+    ax.text(0.25, 9.6, "Geometric–Continuous", fontsize=10)
+    ax.text(6.2, 9.6, "Informational–Continuous", fontsize=10)
+    ax.text(0.25, 0.35, "Geometric–Discrete", fontsize=10)
+    ax.text(6.2, 0.35, "Informational–Discrete", fontsize=10)
+
+    plt.tight_layout()
+    plt.savefig(filename, dpi=300)
+    plt.close(fig)
+
+
+# --------------------------------------------------------------------
+# Figure 7: Unified Transcendence Resonance Surface
+# E_n(x,t)=φ^n e^{-α x^2} e^{β t} tanh(γ x) tanh(x)
+# Gate: A_r(x)=σ(k (x − τ_r)), r = ln φ
+# --------------------------------------------------------------------
+
+def fig7_unified_transcendence_resonance(
+    x_range=(-2.2, 2.2),
+    t_range=(0.0, 4.0),
+    n=4,
+    alpha=0.6,
+    beta=0.35,
+    gamma=1.2,
+    k_gate=8.0,
+    tau0=0.55,
+    r_for_gate=np.log((1 + 5 ** 0.5) / 2),  # r = ln φ
+    num_points=160,
+    filename="fig7_unified_transcendence_resonance.png",
+):
+    x = np.linspace(*x_range, num_points)
+    t = np.linspace(*t_range, num_points)
+    X, T = np.meshgrid(x, t)
+
+    base = (phi ** n) * np.exp(-alpha * X ** 2) * np.exp(beta * T) * np.tanh(gamma * X) * np.tanh(X)
+    tau_r = tau0 * (phi ** (-r_for_gate))
+    A = logistic(X, k=k_gate, x0=tau_r)
+    E = base * A
+
+    fig = plt.figure(figsize=(10, 7.5))
+    ax = fig.add_subplot(111, projection="3d")
+    surf = ax.plot_surface(X, T, E, cmap=cm.inferno, edgecolor="none", alpha=0.92)
+
+    # Activation ridge at x = tau_r
+    ridge = (phi ** n) * np.exp(-alpha * (tau_r ** 2)) * np.exp(beta * t) * np.tanh(gamma * tau_r) * np.tanh(tau_r)
+    ax.plot(np.full_like(t, tau_r), t, ridge, linewidth=2.5)
+
+    ax.set_xlabel("x")
+    ax.set_ylabel("t")
+    ax.set_zlabel(r"$E_n(x,t)$")
+    ax.set_title("Figure 7. Unified Transcendence Resonance Surface")
+    fig.colorbar(surf, shrink=0.6, aspect=10, label=r"$E_n$")
+    plt.tight_layout()
+    plt.savefig(filename, dpi=300)
+    plt.close(fig)
+
+
+if __name__ == "__main__":
+    fig1_nr_stability_stack()
+    fig2_beta_planes()
+    fig3_nr_threshold_operator()
+    fig4_julia_nr_nick_vortex()
+    fig5_socratic_balance_potential()
+    fig6_conceptual_placement_map()
+    fig7_unified_transcendence_resonance()
+    print("Canonical Angell Framework figure suite generated.")
